@@ -13,17 +13,8 @@ INSTALLER_PKG="$SCRIPT_DIR/${BINARY_NAME}-Installer.pkg"
 # Clean up intermediate artifacts on exit (success or failure).
 trap 'rm -rf "$STAGING_DIR" "$COMPONENT_PKG"' EXIT
 
-# Assembles a .app bundle, ad-hoc signs it, and makes the executable runnable.
-# Usage: make_bundle <bundle_path> <binary_src> <binary_name> <plist_src>
-make_bundle() {
-    local bundle="$1" binary_src="$2" binary_name="$3" plist_src="$4"
-    rm -rf "$bundle"
-    mkdir -p "$bundle/Contents/MacOS"
-    cp "$binary_src" "$bundle/Contents/MacOS/$binary_name"
-    cp "$plist_src"  "$bundle/Contents/Info.plist"
-    chmod 755 "$bundle/Contents/MacOS/$binary_name"
-    codesign --force --deep --sign - "$bundle"
-}
+# shellcheck source=scripts/make_bundle.sh
+source "$SCRIPT_DIR/scripts/make_bundle.sh"
 
 for tool in pkgbuild productbuild; do
     command -v "$tool" > /dev/null 2>&1 || {
@@ -39,17 +30,18 @@ swift build -c release
 
 echo "→ Staging payload..."
 rm -rf "$STAGING_DIR"
-make_bundle "$STAGING_DIR/Applications/$BINARY_NAME.app" \
+make_bundle "$STAGING_DIR/Applications/$BINARY_NAME/$BINARY_NAME.app" \
     ".build/release/$BINARY_NAME"                  "$BINARY_NAME" \
     "Sources/ClipboardManager/Info.plist"
 
-make_bundle "$STAGING_DIR/Applications/$BINARY_NAME Uninstaller.app" \
+make_bundle "$STAGING_DIR/Applications/$BINARY_NAME/Uninstall $BINARY_NAME.app" \
     "Installer/uninstaller-app/uninstall"          "uninstall" \
     "Installer/uninstaller-app/Info.plist"
 
 echo "→ Building component package..."
 pkgbuild \
     --root "$STAGING_DIR" \
+    --component-plist "$SCRIPT_DIR/Installer/component.plist" \
     --scripts "$SCRIPT_DIR/Installer/scripts" \
     --identifier "$IDENTIFIER" \
     --version "$VERSION" \

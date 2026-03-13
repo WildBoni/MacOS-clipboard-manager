@@ -1,5 +1,6 @@
 import Carbon.HIToolbox
 
+@MainActor
 class HotkeyManager {
 
     /// Default hotkey: ⌘⇧V. Change these to customise the trigger.
@@ -14,7 +15,7 @@ class HotkeyManager {
         guard hotKeyRef == nil else { return } // Prevent double-registration
 
         var hotKeyID = EventHotKeyID()
-        hotKeyID.signature = fourCharCode("CMgr")
+        hotKeyID.signature = Self.fourCharCode("CMgr")
         hotKeyID.id = 1
 
         var eventType = EventTypeSpec(
@@ -50,8 +51,8 @@ class HotkeyManager {
         if let ref = hotKeyRef      { UnregisterEventHotKey(ref) }
         if let ref = eventHandlerRef { RemoveEventHandler(ref)    }
     }
-}
 
-private func fourCharCode(_ s: String) -> OSType {
-    s.utf8.prefix(4).reduce(0) { ($0 << 8) | OSType($1) }
+    private static func fourCharCode(_ s: String) -> OSType {
+        s.utf8.prefix(4).reduce(0) { ($0 << 8) | OSType($1) }
+    }
 }

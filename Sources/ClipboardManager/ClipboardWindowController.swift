@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 
 // MARK: - Helpers
 
@@ -77,16 +78,21 @@ private class ClipboardTableView: NSTableView {
     var onDelete:    (() -> Void)?
     var onNumberKey: ((Int) -> Void)?
 
-    // kVK_ANSI_1…5 = 18, 19, 20, 21, 23  (note: 22 is kVK_ANSI_6)
-    private static let quickSelectKeys: [UInt16: Int] = [18: 0, 19: 1, 20: 2, 21: 3, 23: 4]
+    private static let quickSelectKeys: [UInt16: Int] = [
+        UInt16(kVK_ANSI_1): 0,
+        UInt16(kVK_ANSI_2): 1,
+        UInt16(kVK_ANSI_3): 2,
+        UInt16(kVK_ANSI_4): 3,
+        UInt16(kVK_ANSI_5): 4,
+    ]
 
     override func keyDown(with event: NSEvent) {
-        switch event.keyCode {
-        case 36, 76: // Return / numpad Enter
+        switch Int(event.keyCode) {
+        case kVK_Return, kVK_ANSI_KeypadEnter:
             onEnter?()
-        case 51:     // Delete
+        case kVK_Delete:
             onDelete?()
-        case 53:     // Escape
+        case kVK_Escape:
             onEscape?()
         default:
             if let idx = Self.quickSelectKeys[event.keyCode] {
@@ -109,12 +115,16 @@ class ClipboardWindowController: NSWindowController {
 
     private var items: [ClipboardItem] = []
     private var previousApp: NSRunningApplication?
+    private var isClosing = false
     private let tableView  = ClipboardTableView()
     private let scrollView = NSScrollView()
 
+    private static let windowWidth:  CGFloat = 520
+    private static let windowHeight: CGFloat = 420
+
     init() {
         let panel = KeyablePanel(
-            contentRect: NSRect(x: 0, y: 0, width: 520, height: 420),
+            contentRect: NSRect(x: 0, y: 0, width: Self.windowWidth, height: Self.windowHeight),
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
@@ -137,10 +147,12 @@ class ClipboardWindowController: NSWindowController {
     // MARK: Show / hide
 
     func show(items: [ClipboardItem]) {
-        self.items = items
-        tableView.reloadData()
+        if items != self.items {
+            self.items = items
+            tableView.reloadData()
+        }
 
-        if !items.isEmpty {
+        if !self.items.isEmpty {
             tableView.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false)
             tableView.scrollRowToVisible(0)
         }
@@ -149,14 +161,17 @@ class ClipboardWindowController: NSWindowController {
         window.center()
 
         previousApp = NSWorkspace.shared.frontmostApplication
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         window.makeKeyAndOrderFront(nil)
         window.makeFirstResponder(tableView)
     }
 
     func closeWindow() {
+        guard !isClosing else { return }
+        isClosing = true
         window?.orderOut(nil)
         restorePreviousApp()
+        isClosing = false
     }
 
     // MARK: Private
@@ -170,10 +185,53 @@ class ClipboardWindowController: NSWindowController {
 
     private func selectItem(at index: Int) {
         guard index >= 0, index < items.count else { return }
+
+        // Without Accessibility permission CGEvent.post is a silent no-op.
+        guard AXIsProcessTrusted() else {
+            showAccessibilityAlert()
+            return
+        }
+
         let pb = NSPasteboard.general
         pb.clearContents()
         pb.setString(items[index].text, forType: .string)
+
         closeWindow()
+        // Give the previous app time to become key, then simulate Cmd+V.
+        // 0.2 s overlaps with the window-close animation and feels instant.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            self?.postPasteEvent()
+        }
+    }
+
+    private func postPasteEvent() {
+        let vKey = CGKeyCode(kVK_ANSI_V)
+        guard let src  = CGEventSource(stateID: .hidSystemState),
+              let down = CGEvent(keyboardEventSource: src, virtualKey: vKey, keyDown: true),
+              let up   = CGEvent(keyboardEventSource: src, virtualKey: vKey, keyDown: false)
+        else { return }
+        down.flags = .maskCommand
+        up.flags   = .maskCommand
+        down.post(tap: .cgAnnotatedSessionEventTap)
+        up.post(tap: .cgAnnotatedSessionEventTap)
+    }
+
+    private func showAccessibilityAlert() {
+        let alert = NSAlert()
+        alert.messageText     = "Accessibility Permission Required"
+        alert.informativeText = """
+            ClipboardManager needs Accessibility access to paste items into other apps.
+
+            Go to System Settings → Privacy & Security → Accessibility, then enable \
+            ClipboardManager. The permission takes effect immediately — no relaunch needed.
+            """
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Open System Settings")
+        alert.addButton(withTitle: "Later")
+        if alert.runModal() == .alertFirstButtonReturn,
+           let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+            NSWorkspace.shared.open(url)
+        }
     }
 
     private func deleteItem(at index: Int) {
@@ -216,11 +274,11 @@ class ClipboardWindowController: NSWindowController {
 
         let title     = makeLabel("Clipboard History",
                                   font: .systemFont(ofSize: 12, weight: .semibold),
-                                  color: .secondaryLabelColor)
+                                  color: .labelColor)
         let separator = { let b = NSBox(); b.boxType = .separator; return b }()
         let hint      = makeLabel("↑↓  navigate    1–5  quick pick    ↵  select    ⌫  delete    ⎋  close",
                                   font: .systemFont(ofSize: 11),
-                                  color: .tertiaryLabelColor)
+                                  color: .labelColor)
 
         let stack = NSStackView(views: [title, separator, scrollView, hint])
         stack.orientation = .vertical
@@ -233,7 +291,7 @@ class ClipboardWindowController: NSWindowController {
 
     private func makeBackground() -> NSVisualEffectView {
         let vfx = NSVisualEffectView()
-        vfx.material     = .popover
+        vfx.material     = .sidebar   // lighter than .menu in light mode
         vfx.blendingMode = .behindWindow
         vfx.state        = .active
         vfx.wantsLayer   = true

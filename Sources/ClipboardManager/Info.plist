@@ -23,5 +23,7 @@
     <true/>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>NSAccessibilityUsageDescription</key>
+    <string>ClipboardManager needs Accessibility access to paste the selected item into the active application.</string>
 </dict>
 </plist>

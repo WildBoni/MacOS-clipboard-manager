@@ -1,5 +1,6 @@
 import AppKit
 
+@MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
 
     private let clipboardMonitor = ClipboardMonitor()
@@ -14,6 +15,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Accessibility access is required to post synthetic paste (Cmd+V) events.
+        // AXIsProcessTrustedWithOptions is idempotent — safe to call unconditionally.
+        AXIsProcessTrustedWithOptions(
+            [kAXTrustedCheckOptionPrompt.takeRetainedValue() as String: true] as CFDictionary
+        )
         setupMenu()
         clipboardMonitor.start()
 

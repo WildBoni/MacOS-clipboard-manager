@@ -3,10 +3,10 @@ set -euo pipefail
 
 BINARY_NAME="ClipboardManager"
 LABEL="com.user.clipboardmanager"
-APP_USER="$HOME/Applications/${BINARY_NAME}.app"
-APP_SYSTEM="/Applications/${BINARY_NAME}.app"
-UNINSTALLER_USER="$HOME/Applications/${BINARY_NAME} Uninstaller.app"
-UNINSTALLER_SYSTEM="/Applications/${BINARY_NAME} Uninstaller.app"
+APP_USER="$HOME/Applications/${BINARY_NAME}/${BINARY_NAME}.app"
+APP_SYSTEM="/Applications/${BINARY_NAME}/${BINARY_NAME}.app"
+UNINSTALLER_USER="$HOME/Applications/${BINARY_NAME}/Uninstall ${BINARY_NAME}.app"
+UNINSTALLER_SYSTEM="/Applications/${BINARY_NAME}/Uninstall ${BINARY_NAME}.app"
 PLIST_PATH="$HOME/Library/LaunchAgents/${LABEL}.plist"
 LOG_DIR="$HOME/Library/Logs/${BINARY_NAME}"
 
@@ -30,6 +30,9 @@ osascript -e 'display dialog "Are you sure you want to uninstall ClipboardManage
 # Stop LaunchAgent
 launchctl bootout "gui/$(id -u)" "$PLIST_PATH" 2>/dev/null || true
 
+# Remove Accessibility permission from TCC database
+tccutil reset Accessibility com.user.clipboardmanager 2>/dev/null || true
+
 # Remove plist and logs (always in user home — no admin needed)
 [ "$PLIST_EXISTS" = true ] && rm -f  "$PLIST_PATH"
 [ "$LOGS_EXIST"   = true ] && rm -rf "$LOG_DIR"
@@ -40,17 +43,23 @@ SELF_APP=""
 [ -d "$UNINSTALLER_SYSTEM" ] && SELF_APP="$UNINSTALLER_SYSTEM"
 
 # Remove the app and this uninstaller. /Applications requires admin; ~/Applications does not.
+FOLDER_USER="$HOME/Applications/${BINARY_NAME}"
+FOLDER_SYSTEM="/Applications/${BINARY_NAME}"
 if [ "$NEEDS_ADMIN" = true ]; then
     # Build a single shell command so osascript prompts for the password only once.
     SHELL_CMD=""
     [ -n "$INSTALLED_APP" ] && SHELL_CMD="rm -rf '${INSTALLED_APP}'"
     [ -n "$SELF_APP"       ] && SHELL_CMD="${SHELL_CMD}${SHELL_CMD:+; }rm -rf '${SELF_APP}'"
+    # Remove the parent folder if it is now empty
+    SHELL_CMD="${SHELL_CMD}${SHELL_CMD:+; }rmdir '${FOLDER_SYSTEM}' 2>/dev/null || true"
     if [ -n "$SHELL_CMD" ]; then
         osascript -e "do shell script \"${SHELL_CMD}\" with administrator privileges" || true
     fi
 else
     [ -n "$INSTALLED_APP" ] && rm -rf "$INSTALLED_APP"
     [ -n "$SELF_APP"       ] && { rm -rf "$SELF_APP" || true; }  # best-effort: we are removing ourselves
+    # Remove the parent folder if it is now empty
+    [ -d "$FOLDER_USER" ] && { rmdir "$FOLDER_USER" 2>/dev/null || true; }
 fi
 
 osascript -e 'display dialog "ClipboardManager has been uninstalled." buttons {"OK"} default button "OK" with icon note with title "ClipboardManager Uninstaller"'

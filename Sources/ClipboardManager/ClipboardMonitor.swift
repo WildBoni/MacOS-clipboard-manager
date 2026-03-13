@@ -1,8 +1,14 @@
 import AppKit
 
-struct ClipboardItem {
+struct ClipboardItem: Equatable {
     let text: String
     let preview: String
+
+    // `preview` is derived from `text`, so comparing it would always be
+    // redundant (and wasteful for large strings).
+    static func == (lhs: ClipboardItem, rhs: ClipboardItem) -> Bool {
+        lhs.text == rhs.text
+    }
 
     private static let previewLength = 500
 
@@ -18,6 +24,7 @@ struct ClipboardItem {
     }
 }
 
+@MainActor
 class ClipboardMonitor {
 
     private(set) var history: [ClipboardItem] = []
@@ -45,7 +52,7 @@ class ClipboardMonitor {
         guard timer == nil else { return } // Prevent double-start
 
         let t = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
-            self?.check()
+            MainActor.assumeIsolated { self?.check() }
         }
         t.tolerance = 0.1 // Allow the OS to batch this wakeup with other timers.
         RunLoop.main.add(t, forMode: .common)
@@ -58,8 +65,9 @@ class ClipboardMonitor {
 
     private func check() {
         let pb = NSPasteboard.general
-        guard pb.changeCount != lastChangeCount else { return }
-        lastChangeCount = pb.changeCount
+        let newCount = pb.changeCount
+        guard newCount != lastChangeCount else { return }
+        lastChangeCount = newCount
 
         let types = pb.types ?? []
         guard !types.contains(where: { Self.sensitiveTypes.contains($0) }) else { return }
