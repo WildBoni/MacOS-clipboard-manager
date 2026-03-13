@@ -1,0 +1,18 @@
+#!/bin/bash
+# Stop a running ClipboardManager instance before the new binary is dropped in.
+
+CURRENT_USER=$(stat -f "%Su" /dev/console)
+if [ -z "$CURRENT_USER" ] || [ "$CURRENT_USER" = "root" ]; then exit 0; fi
+
+USER_HOME=$(dscl . -read "/Users/$CURRENT_USER" NFSHomeDirectory 2>/dev/null | awk '{print $2}')
+[ -z "$USER_HOME" ] && exit 0
+
+PLIST="$USER_HOME/Library/LaunchAgents/com.user.clipboardmanager.plist"
+USER_UID=$(id -u "$CURRENT_USER" 2>/dev/null)
+
+if [ -f "$PLIST" ] && [ -n "$USER_UID" ]; then
+    sudo -u "$CURRENT_USER" launchctl bootout "gui/$USER_UID" "$PLIST" 2>/dev/null || \
+    sudo -u "$CURRENT_USER" launchctl unload  "$PLIST" 2>/dev/null || true
+fi
+
+exit 0

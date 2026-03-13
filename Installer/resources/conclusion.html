@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { font-family: -apple-system, sans-serif; font-size: 13px; padding: 16px 20px; color: #1d1d1f; }
+  h2   { font-size: 15px; margin: 0 0 10px; }
+  p    { margin: 0 0 10px; line-height: 1.5; }
+  ul   { margin: 0 0 10px; padding-left: 18px; line-height: 1.6; }
+  code { font-family: "SF Mono", monospace; font-size: 11px;
+         background: rgba(0,0,0,0.06); padding: 1px 5px; border-radius: 3px; }
+  .dim { color: #6e6e73; font-size: 12px; }
+</style>
+</head>
+<body>
+<h2>ClipboardManager is ready</h2>
+<p>The app is running in the background and will start automatically at login.</p>
+
+<p>Press <code>⌘ Shift V</code> anywhere to open your clipboard history.</p>
+
+<p class="dim"><strong>To uninstall:</strong></p>
+<ul class="dim">
+  <li><code>launchctl bootout "gui/$(id -u)" ~/Library/LaunchAgents/com.user.clipboardmanager.plist</code></li>
+  <li><code>rm /usr/local/bin/ClipboardManager</code></li>
+  <li><code>rm ~/Library/LaunchAgents/com.user.clipboardmanager.plist</code></li>
+  <li><code>rm -rf ~/Library/Logs/ClipboardManager</code></li>
+</ul>
+</body>
+</html>

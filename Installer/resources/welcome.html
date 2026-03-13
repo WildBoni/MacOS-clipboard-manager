@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { font-family: -apple-system, sans-serif; font-size: 13px; padding: 16px 20px; color: #1d1d1f; }
+  h2   { font-size: 15px; margin: 0 0 10px; }
+  p    { margin: 0 0 10px; line-height: 1.5; }
+  ul   { margin: 0 0 10px; padding-left: 18px; line-height: 1.6; }
+  code { font-family: "SF Mono", monospace; font-size: 11px;
+         background: rgba(0,0,0,0.06); padding: 1px 5px; border-radius: 3px; }
+  .dim { color: #6e6e73; font-size: 12px; }
+</style>
+</head>
+<body>
+<h2>ClipboardManager</h2>
+<p>A lightweight clipboard history manager for macOS. No dock icon, no menu bar clutter.</p>
+
+<p><strong>What gets installed</strong></p>
+<ul>
+  <li>Binary → <code>/usr/local/bin/ClipboardManager</code></li>
+  <li>LaunchAgent → <code>~/Library/LaunchAgents/</code></li>
+</ul>
+
+<p><strong>How to use it</strong></p>
+<ul>
+  <li>Press <code>⌘ Shift V</code> to open clipboard history</li>
+  <li>Navigate with <code>↑ ↓</code> or press <code>1–5</code> for quick pick</li>
+  <li><code>↵</code> to copy the selected item &nbsp;·&nbsp; <code>⎋</code> or click outside to close</li>
+</ul>
+
+<p class="dim">History is stored in memory only — nothing is written to disk.
+Passwords from 1Password, Keychain, and other managers are never captured.</p>
+</body>
+</html>

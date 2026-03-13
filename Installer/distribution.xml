@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="2">
+    <title>ClipboardManager</title>
+    <welcome    file="welcome.html"    mime-type="text/html" />
+    <conclusion file="conclusion.html" mime-type="text/html" />
+    <allowed-os-versions>
+        <os-version min="14.0"/>
+    </allowed-os-versions>
+    <options customize="never" rootVolumeOnly="true" />
+    <choices-outline>
+        <line choice="default">
+            <line choice="com.user.clipboardmanager"/>
+        </line>
+    </choices-outline>
+    <choice id="default"/>
+    <choice id="com.user.clipboardmanager" visible="false">
+        <pkg-ref id="com.user.clipboardmanager"/>
+    </choice>
+    <pkg-ref id="com.user.clipboardmanager"
+             version="1.0"
+             onConclusion="none">ClipboardManager.pkg</pkg-ref>
+</installer-gui-script>
