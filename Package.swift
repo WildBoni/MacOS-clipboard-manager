@@ -8,6 +8,7 @@ let package = Package(
         .executableTarget(
             name: "ClipboardManager",
             path: "Sources/ClipboardManager",
+            exclude: ["Info.plist"],
             linkerSettings: [
                 .linkedFramework("Carbon")
             ]
