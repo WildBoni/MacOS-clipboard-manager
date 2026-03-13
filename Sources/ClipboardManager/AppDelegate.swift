@@ -4,7 +4,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private let clipboardMonitor = ClipboardMonitor()
     private let hotkeyManager    = HotkeyManager()
-    private var windowController: ClipboardWindowController?
+
+    private lazy var windowController: ClipboardWindowController = {
+        let wc = ClipboardWindowController()
+        wc.onDeleteItem = { [weak self] text in
+            self?.clipboardMonitor.remove(text: text)
+        }
+        return wc
+    }()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupMenu()
@@ -20,13 +27,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func toggleClipboardWindow() {
-        let wc = windowController ?? ClipboardWindowController()
-        windowController = wc
-
-        if wc.window?.isVisible == true {
-            wc.closeWindow()
+        if windowController.window?.isVisible == true {
+            windowController.closeWindow()
         } else {
-            wc.show(items: clipboardMonitor.history)
+            windowController.show(items: clipboardMonitor.history)
         }
     }
 

@@ -58,6 +58,7 @@ private class ClipboardCellView: NSView {
         ])
     }
 
+    @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError() }
 
     func configure(index: Int, item: ClipboardItem) {
@@ -73,6 +74,7 @@ private class ClipboardTableView: NSTableView {
 
     var onEnter:     (() -> Void)?
     var onEscape:    (() -> Void)?
+    var onDelete:    (() -> Void)?
     var onNumberKey: ((Int) -> Void)?
 
     // kVK_ANSI_1…5 = 18, 19, 20, 21, 23  (note: 22 is kVK_ANSI_6)
@@ -82,6 +84,8 @@ private class ClipboardTableView: NSTableView {
         switch event.keyCode {
         case 36, 76: // Return / numpad Enter
             onEnter?()
+        case 51:     // Delete
+            onDelete?()
         case 53:     // Escape
             onEscape?()
         default:
@@ -100,6 +104,8 @@ class ClipboardWindowController: NSWindowController {
 
     private static let cellID   = NSUserInterfaceItemIdentifier("ClipboardCell")
     private static let columnID = NSUserInterfaceItemIdentifier("ClipboardColumn")
+
+    var onDeleteItem: ((String) -> Void)?
 
     private var items: [ClipboardItem] = []
     private var previousApp: NSRunningApplication?
@@ -125,6 +131,7 @@ class ClipboardWindowController: NSWindowController {
         setupUI()
     }
 
+    @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError() }
 
     // MARK: Show / hide
@@ -169,6 +176,22 @@ class ClipboardWindowController: NSWindowController {
         closeWindow()
     }
 
+    private func deleteItem(at index: Int) {
+        guard index >= 0, index < items.count else { return }
+        let text = items[index].text
+        items.remove(at: index)
+        onDeleteItem?(text)
+        tableView.beginUpdates()
+        tableView.removeRows(at: IndexSet(integer: index), withAnimation: .slideUp)
+        tableView.endUpdates()
+        if items.isEmpty {
+            closeWindow()
+        } else {
+            let nextRow = min(index, items.count - 1)
+            tableView.selectRowIndexes(IndexSet(integer: nextRow), byExtendingSelection: false)
+        }
+    }
+
     @objc private func doubleClicked() {
         let row = tableView.clickedRow
         if row >= 0 { selectItem(at: row) }
@@ -195,7 +218,7 @@ class ClipboardWindowController: NSWindowController {
                                   font: .systemFont(ofSize: 12, weight: .semibold),
                                   color: .secondaryLabelColor)
         let separator = { let b = NSBox(); b.boxType = .separator; return b }()
-        let hint      = makeLabel("↑↓  navigate    1–5  quick pick    ↵  select    ⎋  close",
+        let hint      = makeLabel("↑↓  navigate    1–5  quick pick    ↵  select    ⌫  delete    ⎋  close",
                                   font: .systemFont(ofSize: 11),
                                   color: .tertiaryLabelColor)
 
@@ -247,6 +270,10 @@ class ClipboardWindowController: NSWindowController {
             guard let self else { return }
             let row = self.tableView.selectedRow
             if row >= 0 { self.selectItem(at: row) }
+        }
+        tableView.onDelete    = { [weak self] in
+            guard let self else { return }
+            self.deleteItem(at: self.tableView.selectedRow)
         }
         tableView.onEscape    = { [weak self] in self?.closeWindow() }
         tableView.onNumberKey = { [weak self] idx in self?.selectItem(at: idx) }

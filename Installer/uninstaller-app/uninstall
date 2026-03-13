@@ -1,0 +1,56 @@
+#!/bin/bash
+set -euo pipefail
+
+BINARY_NAME="ClipboardManager"
+LABEL="com.user.clipboardmanager"
+APP_USER="$HOME/Applications/${BINARY_NAME}.app"
+APP_SYSTEM="/Applications/${BINARY_NAME}.app"
+UNINSTALLER_USER="$HOME/Applications/${BINARY_NAME} Uninstaller.app"
+UNINSTALLER_SYSTEM="/Applications/${BINARY_NAME} Uninstaller.app"
+PLIST_PATH="$HOME/Library/LaunchAgents/${LABEL}.plist"
+LOG_DIR="$HOME/Library/Logs/${BINARY_NAME}"
+
+# Detect installed app location
+INSTALLED_APP=""
+NEEDS_ADMIN=false
+[ -d "$APP_USER" ]   && INSTALLED_APP="$APP_USER"
+[ -d "$APP_SYSTEM" ] && { INSTALLED_APP="$APP_SYSTEM"; NEEDS_ADMIN=true; }
+
+PLIST_EXISTS=false; [ -f "$PLIST_PATH" ] && PLIST_EXISTS=true
+LOGS_EXIST=false;   [ -d "$LOG_DIR"    ] && LOGS_EXIST=true
+
+if [ -z "$INSTALLED_APP" ] && [ "$PLIST_EXISTS" = false ] && [ "$LOGS_EXIST" = false ]; then
+    osascript -e 'display dialog "ClipboardManager does not appear to be installed." buttons {"OK"} default button "OK" with icon note with title "ClipboardManager Uninstaller"'
+    exit 0
+fi
+
+# Confirm
+osascript -e 'display dialog "Are you sure you want to uninstall ClipboardManager?\n\nThis will remove the app, its auto-start entry, and log files." buttons {"Cancel", "Uninstall"} default button "Cancel" cancel button "Cancel" with icon caution with title "ClipboardManager Uninstaller"' || exit 0
+
+# Stop LaunchAgent
+launchctl bootout "gui/$(id -u)" "$PLIST_PATH" 2>/dev/null || true
+
+# Remove plist and logs (always in user home — no admin needed)
+[ "$PLIST_EXISTS" = true ] && rm -f  "$PLIST_PATH"
+[ "$LOGS_EXIST"   = true ] && rm -rf "$LOG_DIR"
+
+# Detect which uninstaller bundle is running (for self-removal)
+SELF_APP=""
+[ -d "$UNINSTALLER_USER" ]   && SELF_APP="$UNINSTALLER_USER"
+[ -d "$UNINSTALLER_SYSTEM" ] && SELF_APP="$UNINSTALLER_SYSTEM"
+
+# Remove the app and this uninstaller. /Applications requires admin; ~/Applications does not.
+if [ "$NEEDS_ADMIN" = true ]; then
+    # Build a single shell command so osascript prompts for the password only once.
+    SHELL_CMD=""
+    [ -n "$INSTALLED_APP" ] && SHELL_CMD="rm -rf '${INSTALLED_APP}'"
+    [ -n "$SELF_APP"       ] && SHELL_CMD="${SHELL_CMD}${SHELL_CMD:+; }rm -rf '${SELF_APP}'"
+    if [ -n "$SHELL_CMD" ]; then
+        osascript -e "do shell script \"${SHELL_CMD}\" with administrator privileges" || true
+    fi
+else
+    [ -n "$INSTALLED_APP" ] && rm -rf "$INSTALLED_APP"
+    [ -n "$SELF_APP"       ] && { rm -rf "$SELF_APP" || true; }  # best-effort: we are removing ourselves
+fi
+
+osascript -e 'display dialog "ClipboardManager has been uninstalled." buttons {"OK"} default button "OK" with icon note with title "ClipboardManager Uninstaller"'

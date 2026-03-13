@@ -52,6 +52,10 @@ class ClipboardMonitor {
         timer = t
     }
 
+    func remove(text: String) {
+        history.removeAll { $0.text == text }
+    }
+
     private func check() {
         let pb = NSPasteboard.general
         guard pb.changeCount != lastChangeCount else { return }

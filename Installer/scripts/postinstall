@@ -7,7 +7,7 @@ if [ -z "$CURRENT_USER" ] || [ "$CURRENT_USER" = "root" ]; then exit 0; fi
 USER_HOME=$(dscl . -read "/Users/$CURRENT_USER" NFSHomeDirectory 2>/dev/null | awk '{print $2}')
 [ -z "$USER_HOME" ] && exit 1
 
-BINARY_PATH="/usr/local/bin/ClipboardManager"
+BINARY_PATH="/Applications/ClipboardManager.app/Contents/MacOS/ClipboardManager"
 PLIST_DIR="$USER_HOME/Library/LaunchAgents"
 PLIST_PATH="$PLIST_DIR/com.user.clipboardmanager.plist"
 LOG_DIR="$USER_HOME/Library/Logs/ClipboardManager"

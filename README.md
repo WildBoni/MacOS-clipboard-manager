@@ -48,9 +48,11 @@ Double-clicking an item works too.
 bash build-installer.sh
 ```
 
-This produces `ClipboardManager-Installer.pkg`. Double-click it to run the macOS installer wizard. It will install the binary, register a LaunchAgent, and start the app automatically.
+This produces `ClipboardManager-Installer.pkg`. Double-click it to run the macOS installer wizard. It will install `ClipboardManager.app` to `/Applications`, register a LaunchAgent, and start the app automatically.
 
 Requires Xcode Command Line Tools (`xcode-select --install`).
+
+> **Gatekeeper note:** If macOS warns the app can't be verified, right-click the `.pkg` and choose Open. The installer uses ad-hoc code signing, which should prevent this in most cases.
 
 ### Option B — manual install
 
@@ -58,16 +60,19 @@ Requires Xcode Command Line Tools (`xcode-select --install`).
 bash install.sh
 ```
 
-Builds a release binary, installs it to `~/bin/ClipboardManager`, and registers a LaunchAgent so the app starts automatically at login.
+Builds a release binary, assembles `~/Applications/ClipboardManager.app`, and registers a LaunchAgent so the app starts automatically at login.
 
 ## Uninstall
 
+Double-click **ClipboardManager Uninstaller.app** (installed alongside the app in the same folder). It will ask for confirmation, stop the background process, and remove all files.
+
+If you prefer the command line:
+
 ```bash
-launchctl bootout "gui/$(id -u)" ~/Library/LaunchAgents/com.user.clipboardmanager.plist 2>/dev/null || true
-rm -f ~/bin/ClipboardManager
-rm -f ~/Library/LaunchAgents/com.user.clipboardmanager.plist
-rm -rf ~/Library/Logs/ClipboardManager
+bash uninstall.sh
 ```
+
+Pass `--yes` to skip the confirmation prompt.
 
 ## Notes
 
